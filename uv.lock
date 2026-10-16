@@ -1387,6 +1387,7 @@ version = "0.1.0"
 source = { editable = "cdk" }
 dependencies = [
     { name = "aws-cdk-lib" },
+    { name = "boto3" },
     { name = "constructs" },
     { name = "workshop-service-infra" },
 ]
@@ -1394,6 +1395,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "aws-cdk-lib", specifier = "==2.271.0" },
+    { name = "boto3", specifier = ">=1.36" },
     { name = "constructs", specifier = ">=10.4" },
     { name = "workshop-service-infra", editable = "services/workshops/workshop_service_infra" },
 ]

@@ -2,7 +2,9 @@ from aws_cdk import CfnOutput, Stack
 from aws_cdk import aws_iam as iam
 from constructs import Construct
 
-GITHUB_OIDC_URL = "https://token.actions.githubusercontent.com"
+from workshop_cdk.oidc import GITHUB_OIDC_URL
+
+CI_STACK_NAME = "workshops-ci"
 
 
 def test_permissions(account: str, region: str) -> list[iam.PolicyStatement]:
@@ -41,6 +43,7 @@ class CiStack(Stack):
     """GitHub OIDC provider and pipeline role. Once per account, not per stage.
 
     Optional: with an existing pipeline role, skip this stack and add `test_permissions` to it.
+    `oidc_provider_arn` references an existing provider; None creates one (see oidc.py).
     """
 
     def __init__(
@@ -51,7 +54,7 @@ class CiStack(Stack):
         oidc_provider_arn: str | None = None,
         **kwargs: object,
     ) -> None:
-        super().__init__(scope, "workshops-ci", **kwargs)
+        super().__init__(scope, CI_STACK_NAME, **kwargs)
 
         provider = (
             iam.OpenIdConnectProvider.from_open_id_connect_provider_arn(

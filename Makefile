@@ -53,7 +53,8 @@ destroy:
 	cd cdk && $(CDK) destroy --all --force -c stage=$(STAGE)
 
 ## Once per account: GitHub OIDC provider and pipeline role.
-## make deploy-ci GITHUB_REPOSITORY=owner/repo [OIDC_PROVIDER_ARN=arn:...]
+## make deploy-ci GITHUB_REPOSITORY=owner/repo
+## An existing provider is found and referenced; OIDC_PROVIDER_ARN=arn:... overrides that.
 deploy-ci:
 	cd cdk && $(CDK) deploy --require-approval never -c github_repository=$(GITHUB_REPOSITORY) \
 		$(if $(OIDC_PROVIDER_ARN),-c oidc_provider_arn=$(OIDC_PROVIDER_ARN))

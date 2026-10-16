@@ -4,7 +4,8 @@ The ci stack is only part of the app with `-c github_repository=<owner/repo>`.
 """
 
 import aws_cdk as cdk
-from workshop_cdk.ci import CiStack
+from workshop_cdk.ci import CI_STACK_NAME, CiStack
+from workshop_cdk.oidc import discover_provider
 from workshop_cdk.shared import SharedStack
 from workshop_cdk.stage import Stage
 from workshop_cdk.stateful import StatefulStack
@@ -21,7 +22,9 @@ if github_repository:
     CiStack(
         app,
         github_repository=github_repository,
-        oidc_provider_arn=app.node.try_get_context("oidc_provider_arn"),
+        oidc_provider_arn=discover_provider(
+            CI_STACK_NAME, app.node.try_get_context("oidc_provider_arn")
+        ),
         env=env,
     )
 else:
