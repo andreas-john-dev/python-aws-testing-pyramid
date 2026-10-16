@@ -1,0 +1,50 @@
+[project]
+name = "python-aws-testing-pyramid"
+version = "0.1.0"
+description = "Testing a hexagonal Python service on AWS: one bug per test level."
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "workshop-service-domain",
+    "workshop-service-infra",
+    "workshop-functions",
+]
+
+[dependency-groups]
+dev = [
+    "workshop-cdk",
+    "locust>=2.32",
+    "moto[dynamodb]>=5.1",
+    "pytest>=8.3",
+    "pytestarch>=4.0",
+    "requests>=2.32",
+    "ruff>=0.11",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["services/workshops/*", "cdk"]
+
+[tool.uv.sources]
+workshop-service-domain = { workspace = true }
+workshop-service-infra = { workspace = true }
+workshop-functions = { workspace = true }
+workshop-cdk = { workspace = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit", "tests/contract", "tests/integration", "tests/architecture"]
+pythonpath = ["."]
+addopts = ["-m", "not aws", "--strict-markers"]
+markers = [
+    "aws: runs against a deployed stage and needs real AWS credentials",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+extend-exclude = ["build", "cdk/cdk.out"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

@@ -1,0 +1,17 @@
+[project]
+name = "workshop-cdk"
+version = "0.1.0"
+description = "CDK app for the workshop service: shared, stateful, stateless and optional ci stacks."
+requires-python = ">=3.14"
+dependencies = [
+    "workshop-service-infra",
+    "aws-cdk-lib==2.271.0",
+    "constructs>=10.4",
+]
+
+[tool.uv.sources]
+workshop-service-infra = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.8,<0.12"]
+build-backend = "uv_build"

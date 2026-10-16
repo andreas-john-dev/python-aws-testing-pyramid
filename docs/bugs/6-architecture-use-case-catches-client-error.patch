@@ -1,0 +1,21 @@
+diff --git a/services/workshops/workshop_service_domain/src/workshop_service_domain/use_cases.py b/services/workshops/workshop_service_domain/src/workshop_service_domain/use_cases.py
+index aa3d652..7a751d4 100644
+--- a/services/workshops/workshop_service_domain/src/workshop_service_domain/use_cases.py
++++ b/services/workshops/workshop_service_domain/src/workshop_service_domain/use_cases.py
+@@ -4,6 +4,7 @@ from collections.abc import Callable
+ from dataclasses import dataclass
+ from datetime import datetime
+ 
++from botocore.exceptions import ClientError
+ from workshop_service_domain.errors import (
+     ConcurrentUpdateError,
+     WorkshopAlreadyStarted,
+@@ -32,7 +33,7 @@ def _with_retry[T](policy: RetryPolicy, operation: Callable[[], T]) -> T:
+     for attempt in range(policy.attempts):
+         try:
+             return operation()
+-        except ConcurrentUpdateError:
++        except (ConcurrentUpdateError, ClientError):
+             if attempt == policy.attempts - 1:
+                 raise
+             time.sleep(policy.delay(attempt))

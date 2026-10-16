@@ -1,0 +1,67 @@
+name: pull request
+
+on:
+  pull_request:
+
+# One stage per branch. A new run waits for the old one instead of cancelling it: a cancelled
+# run would skip `make destroy` and leave half a stage behind.
+concurrency:
+  group: stage-${{ github.head_ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  UV_VERSION: "0.11.32"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
+      - run: uv sync --frozen
+      - run: make lint
+      - run: make test
+
+  aws:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      BRANCH: ${{ github.head_ref }}
+    steps:
+      - name: Check configuration
+        env:
+          AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+        run: |
+          if [ -z "$AWS_ROLE_ARN" ] || [ -z "$AWS_REGION" ]; then
+            echo "::error::Set the repository variables AWS_ROLE_ARN and AWS_REGION (see README)."
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Stage name from branch
+        run: echo "STAGE=$(python3 scripts/stage.py "$BRANCH")" >> "$GITHUB_ENV"
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: uv sync --frozen
+      - run: make deploy
+      - run: make test-aws
+      - run: make test-e2e
+      - name: Destroy the stage, also after failed tests
+        if: always()
+        run: make destroy

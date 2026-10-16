@@ -1,0 +1,13 @@
+diff --git a/services/workshops/workshop_service_infra/src/workshop_service_infra/dynamodb.py b/services/workshops/workshop_service_infra/src/workshop_service_infra/dynamodb.py
+index c3e63e8..8765f4b 100644
+--- a/services/workshops/workshop_service_infra/src/workshop_service_infra/dynamodb.py
++++ b/services/workshops/workshop_service_infra/src/workshop_service_infra/dynamodb.py
+@@ -89,7 +89,7 @@ class DynamoDBWorkshopRepository:
+                 "ExpressionAttributeValues": _serialize(
+                     {
+                         ":title": workshop.title,
+-                        ":starts_at": _iso(workshop.starts_at),
++                        ":starts_at": workshop.starts_at.timestamp(),
+                         ":capacity": workshop.capacity,
+                         ":version": workshop.version + 1,
+                         ":gsi1pk": schema.UPCOMING_PARTITION,
