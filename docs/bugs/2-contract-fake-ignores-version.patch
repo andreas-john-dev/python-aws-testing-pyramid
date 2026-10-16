@@ -1,0 +1,15 @@
+diff --git a/tests/fakes/repository.py b/tests/fakes/repository.py
+index 01e9c04..a1a1094 100644
+--- a/tests/fakes/repository.py
++++ b/tests/fakes/repository.py
+@@ -24,10 +24,6 @@ class FakeWorkshopRepository:
+         if self._conflicts_to_raise:
+             self._conflicts_to_raise -= 1
+             raise ConcurrentUpdateError(workshop.id)
+-        stored = self._workshops.get(workshop.id)
+-        stored_version = stored.version if stored else 0
+-        if stored_version != workshop.version:
+-            raise ConcurrentUpdateError(workshop.id)
+         workshop.version += 1
+         self._workshops[workshop.id] = workshop.model_copy(deep=True)
+ 

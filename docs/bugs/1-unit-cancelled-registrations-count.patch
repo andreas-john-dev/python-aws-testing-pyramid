@@ -1,0 +1,13 @@
+diff --git a/services/workshops/workshop_service_domain/src/workshop_service_domain/models.py b/services/workshops/workshop_service_domain/src/workshop_service_domain/models.py
+index ffa720f..c570164 100644
+--- a/services/workshops/workshop_service_domain/src/workshop_service_domain/models.py
++++ b/services/workshops/workshop_service_domain/src/workshop_service_domain/models.py
+@@ -71,7 +71,7 @@ class Workshop(BaseModel):
+ 
+     @property
+     def active_seats(self) -> int:
+-        return sum(r.seats for r in self.registrations if r.is_active)
++        return sum(r.seats for r in self.registrations)
+ 
+     @property
+     def free_seats(self) -> int:

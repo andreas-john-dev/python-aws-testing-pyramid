@@ -1,0 +1,12 @@
+diff --git a/services/workshops/functions/src/functions/api/app.py b/services/workshops/functions/src/functions/api/app.py
+index aa61991..f358ecc 100644
+--- a/services/workshops/functions/src/functions/api/app.py
++++ b/services/workshops/functions/src/functions/api/app.py
+@@ -37,7 +37,6 @@ ERROR_STATUS: dict[type[DomainError], HTTPStatus] = {
+     SeatLimitExceeded: HTTPStatus.UNPROCESSABLE_ENTITY,
+     CancellationTooLate: HTTPStatus.UNPROCESSABLE_ENTITY,
+     WorkshopAlreadyStarted: HTTPStatus.UNPROCESSABLE_ENTITY,
+-    ConcurrentUpdateError: HTTPStatus.CONFLICT,
+ }
+ 
+ 

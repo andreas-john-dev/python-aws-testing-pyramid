@@ -1,0 +1,21 @@
+[project]
+name = "workshop-functions"
+version = "0.1.0"
+description = "Lambdalith for the workshop API (Powertools router)."
+requires-python = ">=3.13"
+dependencies = [
+    "workshop-service-domain",
+    "workshop-service-infra",
+    "aws-lambda-powertools>=3.5",
+]
+
+[tool.uv.sources]
+workshop-service-domain = { workspace = true }
+workshop-service-infra = { workspace = true }
+
+[tool.uv.build-backend]
+module-name = "functions"
+
+[build-system]
+requires = ["uv_build>=0.8,<0.12"]
+build-backend = "uv_build"
