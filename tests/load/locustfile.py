@@ -34,30 +34,32 @@ run: dict[str, Any] = {}
 statuses: Counter[int] = Counter()
 
 
-@events.test_start.add_listener
+@events.init.add_listener
 def set_up(environment: Environment, **_: Any) -> None:
+    # `init` blocks before the run starts. `test_start` would not: Locust starts the --run-time
+    # clock while users spawn, and creating the Cognito users takes most of a minute.
     session = aws_session()
     stage = stage_config(session)
     rid = run_id()
     users = CognitoTestUsers(session.client("cognito-idp"), stage)
     table = DynamoDbTable(client=session.client("dynamodb"), name=stage.table_name)
     run.update(users=users, table=table, finished=0)
+    try:
+        owner = users.create(f"load-{rid}-owner")
+        starts_at = datetime.now(UTC) + timedelta(days=7)
+        api = ApiClient(stage.api_url, owner.id_token)
+        workshop = expect(api.create_workshop(f"load {rid}", starts_at, CAPACITY), 201)
+        table.track(workshop["id"])
+        run["workshop_id"] = workshop["id"]
 
-    owner = users.create(f"load-{rid}-owner")
-    starts_at = datetime.now(UTC) + timedelta(days=7)
-    workshop = expect(
-        ApiClient(stage.api_url, owner.id_token).create_workshop(
-            f"load {rid}", starts_at, CAPACITY
-        ),
-        201,
-    )
-    table.track(workshop["id"])
-    run["workshop_id"] = workshop["id"]
-
-    count = environment.parsed_options.num_users if environment.parsed_options else 100
-    print(f"creating {count} Cognito test users ...")
-    run["tokens"] = [users.create(f"load-{rid}-{n:03}").id_token for n in range(count)]
-    run["users_total"] = count
+        count = environment.parsed_options.num_users if environment.parsed_options else 100
+        print(f"creating {count} Cognito test users ...")
+        run["tokens"] = [users.create(f"load-{rid}-{n:03}").id_token for n in range(count)]
+        run["users_total"] = count
+    except BaseException:
+        users.delete_all()
+        table.cleanup()
+        raise
     WorkshopUser.host = stage.api_url
 
 
