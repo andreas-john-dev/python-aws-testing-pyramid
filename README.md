@@ -172,7 +172,9 @@ make unbug        # revert all applied patches
 ```
 
 Bugs 4, 7 and 8 need a deploy after applying the patch (`make deploy`, then `make test-aws`,
-`make test-e2e` or `make load`).
+`make test-e2e` or `make load`). The manual workflow `bug demo` (`.github/workflows/bug.yml`) does
+that on a stage of its own and keeps the output as an artifact. It is green when the level fails,
+i.e. when the bug was caught.
 
 | # | Level                       | Bug                                                                    | Why the level before misses it                                          |
 |---|-----------------------------|------------------------------------------------------------------------|-------------------------------------------------------------------------|

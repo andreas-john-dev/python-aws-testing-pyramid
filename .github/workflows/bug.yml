@@ -1,0 +1,70 @@
+name: bug demo
+
+# Manual only. Plants one of the bugs that only AWS catches (docs/bugs/4, 7, 8) on a stage of its
+# own, runs the test level that should catch it and keeps the output as an artifact. The job is
+# green when that level fails, i.e. when the bug was caught.
+on:
+  workflow_dispatch:
+    inputs:
+      bug:
+        description: "Bug from docs/bugs"
+        type: choice
+        options: ["4", "7", "8"]
+
+concurrency:
+  group: bug-${{ inputs.bug }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      BUG: ${{ inputs.bug }}
+      STAGE: bug${{ inputs.bug }}-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.32"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: uv sync --frozen
+      - name: Plant the bug
+        run: make "bug-$BUG"
+      - run: make deploy
+      - name: Run the level that should catch it
+        run: |
+          case "$BUG" in
+            4) target=test-aws ;;
+            7) target=test-e2e ;;
+            8) target=load ;;
+          esac
+          mkdir -p reports
+          set +e
+          make "$target" 2>&1 | tee "reports/bug-$BUG.txt"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "::error::make $target passed: bug $BUG was not caught"
+            exit 1
+          fi
+          echo "::notice::make $target failed as expected (exit $status): bug $BUG was caught"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bug-${{ inputs.bug }}-output
+          path: reports/
+      - name: Destroy the stage
+        if: always() && steps.credentials.outcome == 'success'
+        run: make destroy
