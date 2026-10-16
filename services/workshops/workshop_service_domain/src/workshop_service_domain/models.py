@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from uuid import uuid4
 
-from pydantic import AwareDatetime, BaseModel, Field, field_validator
+from pydantic import AwareDatetime, BaseModel, Field, field_validator, model_validator
 
 from workshop_service_domain.errors import (
     CancellationTooLate,
@@ -23,6 +23,10 @@ def new_id() -> str:
 
 def _to_utc(value: datetime) -> datetime:
     return value.astimezone(UTC)
+
+
+def _registration_order(registration: "Registration") -> tuple[datetime, str]:
+    return registration.created_at, registration.id
 
 
 class RegistrationStatus(StrEnum):
@@ -64,6 +68,13 @@ class Workshop(BaseModel):
 
     _utc = field_validator("starts_at")(_to_utc)
 
+    @model_validator(mode="after")
+    def _canonical_order(self) -> "Workshop":
+        # Registrations are ordered by (created_at, id) wherever they come from, so a workshop
+        # read back from any repository equals the one that was saved.
+        self.registrations.sort(key=_registration_order)
+        return self
+
     @property
     def pending_registrations(self) -> list[Registration]:
         """Registrations changed since the workshop was loaded, i.e. what the next save writes."""
@@ -91,6 +102,7 @@ class Workshop(BaseModel):
             user_id=user_id, seats=seats, created_at=now, changed_in_version=self.version + 1
         )
         self.registrations.append(registration)
+        self.registrations.sort(key=_registration_order)
         return registration
 
     def cancel(self, registration_id: str, user_id: str, now: datetime) -> Registration:

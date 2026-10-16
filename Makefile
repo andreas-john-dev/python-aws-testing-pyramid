@@ -1,6 +1,12 @@
-.PHONY: install test test-aws lint format unbug
+.PHONY: install test test-aws test-e2e load package synth deploy destroy deploy-ci lint format unbug
 
 PYTEST := uv run pytest
+CDK := npx --yes aws-cdk@2.1143.0
+LAMBDA_PYTHON := 3.13
+LAMBDA_PLATFORM := aarch64-manylinux2014
+## One stage per branch, see scripts/stage.py. Override with `make deploy STAGE=...`.
+STAGE ?= $(shell python3 scripts/stage.py)
+export STAGE
 
 install:
 	uv sync
@@ -14,6 +20,43 @@ test:
 ## AWS_REGION and STAGE.
 test-aws:
 	$(PYTEST) -m aws tests/contract tests/integration/dynamodb
+
+## Lambda E2E tests through API Gateway with Cognito test users. Same credentials as test-aws.
+test-e2e:
+	$(PYTEST) -m aws tests/e2e
+
+## 100 parallel users book a workshop with 20 seats. Only against your own stage.
+load:
+	mkdir -p reports
+	PYTHONPATH=. uv run locust -f tests/load/locustfile.py --headless --users 100 --spawn-rate 100 \
+		--run-time 1m --stop-timeout 10 --csv reports/load --html reports/load.html
+
+## The functions package and its dependencies for arm64, no layers.
+package:
+	rm -rf build/lambda && mkdir -p build
+	uv export --package workshop-functions --frozen --no-dev --no-editable \
+		--no-emit-workspace --no-hashes --quiet -o build/requirements.txt
+	uv pip install --quiet --target build/lambda --python-version $(LAMBDA_PYTHON) \
+		--python-platform $(LAMBDA_PLATFORM) --only-binary :all: -r build/requirements.txt
+	uv pip install --quiet --target build/lambda --python-version $(LAMBDA_PYTHON) \
+		--python-platform $(LAMBDA_PLATFORM) --no-deps \
+		services/workshops/workshop_service_domain services/workshops/workshop_service_infra \
+		services/workshops/functions
+
+synth: package
+	cd cdk && $(CDK) synth --quiet -c stage=$(STAGE)
+
+deploy: package
+	cd cdk && $(CDK) deploy --all --require-approval never -c stage=$(STAGE)
+
+destroy:
+	cd cdk && $(CDK) destroy --all --force -c stage=$(STAGE)
+
+## Once per account: GitHub OIDC provider and pipeline role.
+## make deploy-ci GITHUB_REPOSITORY=owner/repo [OIDC_PROVIDER_ARN=arn:...]
+deploy-ci:
+	cd cdk && $(CDK) deploy --require-approval never -c github_repository=$(GITHUB_REPOSITORY) \
+		$(if $(OIDC_PROVIDER_ARN),-c oidc_provider_arn=$(OIDC_PROVIDER_ARN))
 
 lint:
 	uv run ruff check .

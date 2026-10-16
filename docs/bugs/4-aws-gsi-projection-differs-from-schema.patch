@@ -1,0 +1,13 @@
+diff --git a/cdk/src/workshop_cdk/stateful.py b/cdk/src/workshop_cdk/stateful.py
+index dab83e0..c3d3e0b 100644
+--- a/cdk/src/workshop_cdk/stateful.py
++++ b/cdk/src/workshop_cdk/stateful.py
+@@ -35,7 +35,7 @@ class StatefulStack(Stack):
+                     index_name=schema.GSI1_NAME,
+                     partition_key=_string_key(schema.GSI1_PARTITION_KEY),
+                     sort_key=_string_key(schema.GSI1_SORT_KEY),
+-                    projection_type=dynamodb.ProjectionType(schema.GSI1_PROJECTION),
++                    projection_type=dynamodb.ProjectionType.KEYS_ONLY,
+                 )
+             ],
+         )

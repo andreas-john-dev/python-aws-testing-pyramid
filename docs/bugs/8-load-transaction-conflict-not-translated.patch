@@ -1,0 +1,13 @@
+diff --git a/services/workshops/workshop_service_infra/src/workshop_service_infra/dynamodb.py b/services/workshops/workshop_service_infra/src/workshop_service_infra/dynamodb.py
+index 5f1e99e..6490371 100644
+--- a/services/workshops/workshop_service_infra/src/workshop_service_infra/dynamodb.py
++++ b/services/workshops/workshop_service_infra/src/workshop_service_infra/dynamodb.py
+@@ -11,7 +11,7 @@ from workshop_service_domain.models import Registration, Workshop
+ from workshop_service_infra import schema
+ 
+ # Cancellation reasons that mean "someone else changed this workshop".
+-_CONFLICT_CODES = {"ConditionalCheckFailed", "TransactionConflict"}
++_CONFLICT_CODES = {"ConditionalCheckFailed"}
+ _MAX_TRANSACTION_ITEMS = 100
+ 
+ _serializer = TypeSerializer()

@@ -12,9 +12,12 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "workshop-cdk",
+    "locust>=2.32",
     "moto[dynamodb]>=5.1",
     "pytest>=8.3",
     "pytestarch>=4.0",
+    "requests>=2.32",
     "ruff>=0.11",
 ]
 
@@ -22,12 +25,13 @@ dev = [
 package = false
 
 [tool.uv.workspace]
-members = ["services/workshops/*"]
+members = ["services/workshops/*", "cdk"]
 
 [tool.uv.sources]
 workshop-service-domain = { workspace = true }
 workshop-service-infra = { workspace = true }
 workshop-functions = { workspace = true }
+workshop-cdk = { workspace = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests/unit", "tests/contract", "tests/integration", "tests/architecture"]
@@ -40,6 +44,7 @@ markers = [
 [tool.ruff]
 line-length = 100
 target-version = "py313"
+extend-exclude = ["build", "cdk/cdk.out"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]

@@ -1,4 +1,4 @@
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from datetime import UTC, datetime
 from typing import Any
 
@@ -39,23 +39,13 @@ class DynamoDBWorkshopRepository:
         self._table_name = table_name
 
     def get(self, workshop_id: str) -> Workshop | None:
-        items = list(
-            self._query(
-                KeyConditionExpression="#pk = :pk",
-                ExpressionAttributeNames={"#pk": schema.PARTITION_KEY},
-                ExpressionAttributeValues=_serialize({":pk": schema.workshop_pk(workshop_id)}),
-                ConsistentRead=True,
-            )
+        items = self._query(
+            KeyConditionExpression="#pk = :pk",
+            ExpressionAttributeNames={"#pk": schema.PARTITION_KEY},
+            ExpressionAttributeValues=_serialize({":pk": schema.workshop_pk(workshop_id)}),
+            ConsistentRead=True,
         )
-        meta = next((i for i in items if i[schema.SORT_KEY] == schema.META_SORT_KEY), None)
-        if meta is None:
-            return None
-        registrations = [
-            _registration_from_item(i)
-            for i in items
-            if i[schema.SORT_KEY].startswith(schema.REGISTRATION_PREFIX)
-        ]
-        return _workshop_from_item(meta, registrations)
+        return next(iter(_workshops_from_items(items)), None)
 
     def save(self, workshop: Workshop) -> None:
         if workshop.version == 0:
@@ -93,7 +83,9 @@ class DynamoDBWorkshopRepository:
                         ":capacity": workshop.capacity,
                         ":version": workshop.version + 1,
                         ":gsi1pk": schema.UPCOMING_PARTITION,
-                        ":gsi1sk": _iso(workshop.starts_at),
+                        ":gsi1sk": schema.gsi1_sort_key(
+                            _iso(workshop.starts_at), workshop.id, schema.META_SORT_KEY
+                        ),
                         **values,
                     }
                 ),
@@ -103,7 +95,7 @@ class DynamoDBWorkshopRepository:
             {
                 "Put": {
                     "TableName": self._table_name,
-                    "Item": _serialize(_registration_to_item(workshop.id, registration)),
+                    "Item": _serialize(_registration_to_item(workshop, registration)),
                 }
             }
             for registration in workshop.pending_registrations
@@ -119,8 +111,8 @@ class DynamoDBWorkshopRepository:
         workshop.version += 1
 
     def list_upcoming(self, now: datetime) -> list[Workshop]:
-        # The GSI is eventually consistent: it only yields candidate ids. Each workshop is then
-        # read with a strongly consistent query on its own partition.
+        # One query returns META and REG items of every upcoming workshop. The index is
+        # eventually consistent, so a listing may lag behind the latest registrations.
         items = self._query(
             IndexName=schema.GSI1_NAME,
             KeyConditionExpression="#gsi1pk = :gsi1pk AND #gsi1sk > :now",
@@ -132,9 +124,7 @@ class DynamoDBWorkshopRepository:
                 {":gsi1pk": schema.UPCOMING_PARTITION, ":now": _iso(now)}
             ),
         )
-        workshop_ids = [i[schema.PARTITION_KEY].removeprefix(schema.WORKSHOP_PREFIX) for i in items]
-        workshops = (self.get(workshop_id) for workshop_id in workshop_ids)
-        return sorted((w for w in workshops if w is not None), key=lambda w: w.starts_at)
+        return [w for w in _workshops_from_items(items) if w.starts_at > now]
 
     def _query(self, **kwargs: Any) -> Iterator[dict[str, Any]]:
         paginator = self._client.get_paginator("query")
@@ -150,10 +140,32 @@ def _is_conflict(error: ClientError) -> bool:
     return any(reason.get("Code") in _CONFLICT_CODES for reason in reasons)
 
 
-def _registration_to_item(workshop_id: str, registration: Registration) -> dict[str, Any]:
+def _workshops_from_items(items: Iterable[dict[str, Any]]) -> list[Workshop]:
+    """Groups items by partition, keeping their order. A group without META is skipped."""
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for item in items:
+        groups.setdefault(item[schema.PARTITION_KEY], []).append(item)
+    workshops = []
+    for group in groups.values():
+        meta = next((i for i in group if i[schema.SORT_KEY] == schema.META_SORT_KEY), None)
+        if meta is None:
+            continue
+        registrations = [
+            _registration_from_item(i)
+            for i in group
+            if i[schema.SORT_KEY].startswith(schema.REGISTRATION_PREFIX)
+        ]
+        workshops.append(_workshop_from_item(meta, registrations))
+    return workshops
+
+
+def _registration_to_item(workshop: Workshop, registration: Registration) -> dict[str, Any]:
+    sort_key = schema.registration_sk(registration.id)
     return {
-        schema.PARTITION_KEY: schema.workshop_pk(workshop_id),
-        schema.SORT_KEY: schema.registration_sk(registration.id),
+        schema.PARTITION_KEY: schema.workshop_pk(workshop.id),
+        schema.SORT_KEY: sort_key,
+        schema.GSI1_PARTITION_KEY: schema.UPCOMING_PARTITION,
+        schema.GSI1_SORT_KEY: schema.gsi1_sort_key(_iso(workshop.starts_at), workshop.id, sort_key),
         "user_id": registration.user_id,
         "seats": registration.seats,
         "status": registration.status.value,
@@ -180,5 +192,5 @@ def _workshop_from_item(item: dict[str, Any], registrations: list[Registration])
         starts_at=datetime.fromisoformat(item["starts_at"]),
         capacity=int(item["capacity"]),
         version=int(item["version"]),
-        registrations=sorted(registrations, key=lambda r: (r.created_at, r.id)),
+        registrations=registrations,
     )

@@ -1,0 +1,26 @@
+diff --git a/cdk/src/workshop_cdk/stateless.py b/cdk/src/workshop_cdk/stateless.py
+index ae78df2..76bc05b 100644
+--- a/cdk/src/workshop_cdk/stateless.py
++++ b/cdk/src/workshop_cdk/stateless.py
+@@ -4,6 +4,7 @@ from aws_cdk import Duration, Stack
+ from aws_cdk import aws_apigateway as apigateway
+ from aws_cdk import aws_cognito as cognito
+ from aws_cdk import aws_dynamodb as dynamodb
++from aws_cdk import aws_iam as iam
+ from aws_cdk import aws_lambda as lambda_
+ from aws_cdk import aws_logs as logs
+ from aws_cdk import aws_ssm as ssm
+@@ -61,7 +62,12 @@ class StatelessStack(Stack):
+                 removal_policy=stage.removal_policy,
+             ),
+         )
+-        table.grant_read_write_data(function)
++        function.add_to_role_policy(
++            iam.PolicyStatement(
++                actions=["dynamodb:Query", "dynamodb:PutItem", "dynamodb:UpdateItem"],
++                resources=[table.table_arn],
++            )
++        )
+ 
+         api = apigateway.LambdaRestApi(
+             self,

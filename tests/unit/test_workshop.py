@@ -29,6 +29,16 @@ def test_naive_starts_at_is_rejected() -> None:
         Workshop(title="t", starts_at=datetime(2026, 12, 1, 10), capacity=1)
 
 
+def test_registrations_are_ordered_by_creation_then_id() -> None:
+    workshop = make_workshop()
+    later = workshop.register("alice", 1, NOW + timedelta(minutes=1))
+    same_time = [workshop.register(user, 1, NOW) for user in ("bob", "carol")]
+
+    expected = [*sorted(same_time, key=lambda r: r.id), later]
+    assert workshop.registrations == expected
+    assert Workshop.model_validate(workshop.model_dump()).registrations == expected
+
+
 def test_register_reduces_free_seats() -> None:
     workshop = make_workshop(capacity=3)
 

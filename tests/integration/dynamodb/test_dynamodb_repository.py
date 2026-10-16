@@ -37,9 +37,10 @@ def test_items_have_the_documented_layout(dynamodb_table: DynamoDbTable) -> None
     assert set(items) == {schema.META_SORT_KEY, f"REG#{alice.id}", f"REG#{bob.id}"}
     meta = items[schema.META_SORT_KEY]
     assert meta[schema.PARTITION_KEY] == f"WORKSHOP#{workshop.id}"
-    assert meta[schema.GSI1_PARTITION_KEY] == schema.UPCOMING_PARTITION
-    assert meta[schema.GSI1_SORT_KEY] == meta["starts_at"]
-    assert all(schema.GSI1_PARTITION_KEY not in i for k, i in items.items() if k != "META")
+    # Every item is in gsi1, so one index query returns whole workshops.
+    for sort_key, item in items.items():
+        assert item[schema.GSI1_PARTITION_KEY] == schema.UPCOMING_PARTITION
+        assert item[schema.GSI1_SORT_KEY] == f"{meta['starts_at']}#{workshop.id}#{sort_key}"
 
 
 def test_timestamps_are_utc_iso_strings_and_numbers_are_numbers(
@@ -116,10 +117,13 @@ def test_get_returns_every_registration(dynamodb_table: DynamoDbTable) -> None:
     assert loaded is not None and len(loaded.registrations) == 60
 
 
-def test_list_upcoming_reads_the_index(dynamodb_table: DynamoDbTable) -> None:
+def test_list_upcoming_reads_whole_workshops_from_the_index(
+    dynamodb_table: DynamoDbTable,
+) -> None:
     repository = tracked_repository(dynamodb_table)
     past, upcoming = new_workshop(-timedelta(hours=1)), new_workshop(timedelta(days=2))
     upcoming.register("alice", 1, NOW)
+    upcoming.register("bob", 2, NOW)
     for workshop in (past, upcoming):
         repository.save(workshop)
 
@@ -127,7 +131,7 @@ def test_list_upcoming_reads_the_index(dynamodb_table: DynamoDbTable) -> None:
     # immediate visibility. moto returns on the first try.
     found = eventually(
         lambda: [w for w in repository.list_upcoming(NOW) if w.id in {past.id, upcoming.id}],
-        until=lambda ws: len(ws) == 1,
+        until=lambda ws: len(ws) == 1 and len(ws[0].registrations) == 2,
     )
 
     assert found == [upcoming]

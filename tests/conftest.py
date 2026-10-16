@@ -5,7 +5,7 @@ from collections.abc import Iterator
 import boto3
 import pytest
 
-from tests.support.aws import StageConfig, aws_session, stage_config
+from tests.support.aws import AwsSetupError, StageConfig, aws_session, stage_config
 from tests.support.dynamodb import DynamoDbTable
 from tests.support.moto import moto_table
 
@@ -16,12 +16,18 @@ DYNAMODB_BACKENDS = [MOTO, pytest.param(AWS, marks=pytest.mark.aws)]
 
 @pytest.fixture(scope="session")
 def aws() -> boto3.Session:
-    return aws_session()
+    try:
+        return aws_session()
+    except AwsSetupError as error:
+        pytest.fail(str(error), pytrace=False)
 
 
 @pytest.fixture(scope="session")
 def stage(aws: boto3.Session) -> StageConfig:
-    return stage_config(aws)
+    try:
+        return stage_config(aws)
+    except AwsSetupError as error:
+        pytest.fail(str(error), pytrace=False)
 
 
 @pytest.fixture

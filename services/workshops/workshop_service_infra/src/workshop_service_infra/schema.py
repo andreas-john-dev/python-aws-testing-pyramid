@@ -28,6 +28,15 @@ def registration_sk(registration_id: str) -> str:
     return f"{REGISTRATION_PREFIX}{registration_id}"
 
 
+def gsi1_sort_key(starts_at: str, workshop_id: str, sort_key: str) -> str:
+    """Every item of a workshop is in gsi1, ordered by start, then workshop, META before REG#.
+
+    One query on gsi1 then returns whole aggregates. `starts_at` never changes after creation;
+    if it ever does, every item of the workshop needs a new gsi1sk.
+    """
+    return f"{starts_at}#{workshop_id}#{sort_key}"
+
+
 def create_table_kwargs(table_name: str) -> dict[str, Any]:
     """Arguments for `CreateTable`, used where no CDK runs (moto)."""
     return {

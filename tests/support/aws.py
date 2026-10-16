@@ -10,7 +10,6 @@ import os
 from dataclasses import dataclass
 
 import boto3
-import pytest
 from botocore.exceptions import BotoCoreError, ClientError
 from workshop_service_infra import parameters
 
@@ -26,8 +25,12 @@ class StageConfig:
     test_client_id: str
 
 
+class AwsSetupError(Exception):
+    """Raised before any test runs. pytest fixtures turn it into a failure, Locust exits."""
+
+
 def _fail(message: str) -> None:
-    pytest.fail(message, pytrace=False)
+    raise AwsSetupError(message)
 
 
 def aws_session() -> boto3.Session:
