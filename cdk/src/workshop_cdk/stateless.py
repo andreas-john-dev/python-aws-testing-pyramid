@@ -44,7 +44,7 @@ class StatelessStack(Stack):
             self,
             "ApiFunction",
             function_name=f"workshops-{stage.name}-api",
-            runtime=lambda_.Runtime.PYTHON_3_13,
+            runtime=lambda_.Runtime.PYTHON_3_14,
             architecture=lambda_.Architecture.ARM_64,
             code=lambda_.Code.from_asset(str(LAMBDA_ASSET)),
             handler="functions.api.handler.handler",

@@ -2,7 +2,7 @@
 name = "workshop-service-infra"
 version = "0.1.0"
 description = "Adapters for the workshop domain: DynamoDB repository, system clock, table schema."
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = ["workshop-service-domain", "boto3>=1.36"]
 
 [tool.uv.sources]

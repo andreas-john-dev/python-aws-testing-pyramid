@@ -25,7 +25,7 @@ def _to_utc(value: datetime) -> datetime:
     return value.astimezone(UTC)
 
 
-def _registration_order(registration: "Registration") -> tuple[datetime, str]:
+def _registration_order(registration: Registration) -> tuple[datetime, str]:
     return registration.created_at, registration.id
 
 
@@ -69,7 +69,7 @@ class Workshop(BaseModel):
     _utc = field_validator("starts_at")(_to_utc)
 
     @model_validator(mode="after")
-    def _canonical_order(self) -> "Workshop":
+    def _canonical_order(self) -> Workshop:
         # Registrations are ordered by (created_at, id) wherever they come from, so a workshop
         # read back from any repository equals the one that was saved.
         self.registrations.sort(key=_registration_order)

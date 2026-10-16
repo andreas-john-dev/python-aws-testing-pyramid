@@ -3,7 +3,7 @@ name = "python-aws-testing-pyramid"
 version = "0.1.0"
 description = "Testing a hexagonal Python service on AWS: one bug per test level."
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
     "workshop-service-domain",
     "workshop-service-infra",
@@ -43,7 +43,7 @@ markers = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py313"
+target-version = "py314"
 extend-exclude = ["build", "cdk/cdk.out"]
 
 [tool.ruff.lint]

@@ -2,7 +2,7 @@
 name = "workshop-service-domain"
 version = "0.1.0"
 description = "Workshop registrations: models, rules, ports and use cases. No AWS types."
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = ["pydantic>=2.10"]
 
 [build-system]

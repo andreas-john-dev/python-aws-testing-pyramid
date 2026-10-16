@@ -2,7 +2,7 @@
 
 PYTEST := uv run pytest
 CDK := npx --yes aws-cdk@2.1143.0
-LAMBDA_PYTHON := 3.13
+LAMBDA_PYTHON := 3.14
 LAMBDA_PLATFORM := aarch64-manylinux2014
 ## One stage per branch, see scripts/stage.py. Override with `make deploy STAGE=...`.
 STAGE ?= $(shell python3 scripts/stage.py)

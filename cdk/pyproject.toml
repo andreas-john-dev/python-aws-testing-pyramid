@@ -2,7 +2,7 @@
 name = "workshop-cdk"
 version = "0.1.0"
 description = "CDK app for the workshop service: shared, stateful, stateless and optional ci stacks."
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
     "workshop-service-infra",
     "aws-cdk-lib==2.271.0",
