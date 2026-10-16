@@ -8,7 +8,7 @@ from workshop_cdk.stage import Stage
 
 
 class SharedStack(Stack):
-    """Cognito user pool, plus an app client for tests in non-production stages."""
+    """Cognito user pool, plus an app client for E2E and load tests."""
 
     def __init__(self, scope: Construct, stage: Stage, **kwargs: object) -> None:
         super().__init__(scope, stage.stack_name("shared"), **kwargs)
@@ -28,17 +28,18 @@ class SharedStack(Stack):
             string_value=user_pool.user_pool_id,
         )
 
-        if not stage.is_production:
-            # Lets E2E and load tests sign in test users with AdminInitiateAuth.
-            test_client = user_pool.add_client(
-                "TestClient",
-                user_pool_client_name=f"workshops-{stage.name}-tests",
-                generate_secret=False,
-                auth_flows=cognito.AuthFlow(admin_user_password=True),
-            )
-            ssm.StringParameter(
-                self,
-                "TestClientIdParameter",
-                parameter_name=parameters.name(stage.name, parameters.TEST_CLIENT_ID),
-                string_value=test_client.user_pool_client_id,
-            )
+        # Lets E2E and load tests sign in test users with AdminInitiateAuth, in every stage
+        # including prod. The flow needs IAM rights on the user pool (cognito-idp:Admin*), so
+        # the client opens nothing to callers without them.
+        test_client = user_pool.add_client(
+            "TestClient",
+            user_pool_client_name=f"workshops-{stage.name}-tests",
+            generate_secret=False,
+            auth_flows=cognito.AuthFlow(admin_user_password=True),
+        )
+        ssm.StringParameter(
+            self,
+            "TestClientIdParameter",
+            parameter_name=parameters.name(stage.name, parameters.TEST_CLIENT_ID),
+            string_value=test_client.user_pool_client_id,
+        )

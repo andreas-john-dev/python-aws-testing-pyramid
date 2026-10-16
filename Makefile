@@ -1,4 +1,4 @@
-.PHONY: install test test-aws test-e2e load package synth deploy destroy deploy-ci lint format unbug
+.PHONY: install test test-aws test-e2e load package synth deploy destroy smoke deploy-ci lint format unbug
 
 PYTEST := uv run pytest
 CDK := npx --yes aws-cdk@2.1143.0
@@ -50,7 +50,16 @@ deploy: package
 	cd cdk && $(CDK) deploy --all --require-approval never -c stage=$(STAGE)
 
 destroy:
+	@if [ "$(STAGE)" = "prod" ]; then echo "refusing to destroy prod"; exit 1; fi
 	cd cdk && $(CDK) destroy --all --force -c stage=$(STAGE)
+
+## Read-only check after a deploy, also for prod: a request without a token must get 401 from
+## API Gateway. No test data, no test client needed.
+smoke:
+	@url=$$(aws ssm get-parameter --name /workshops/$(STAGE)/api-url \
+		--query Parameter.Value --output text) && \
+	code=$$(curl -s -o /dev/null -w '%{http_code}' "$${url%/}/workshops") && \
+	echo "GET $${url%/}/workshops without a token: $$code" && test "$$code" = 401
 
 ## Once per account: GitHub OIDC provider and pipeline role.
 ## make deploy-ci GITHUB_REPOSITORY=owner/repo

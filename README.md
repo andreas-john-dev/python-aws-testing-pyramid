@@ -126,9 +126,22 @@ start lower.
 
 A concurrency group per branch keeps two pushes from deploying to the same stage in parallel.
 `cancel-in-progress` stays off: a cancelled run would skip step 5 and leave half a stage behind.
-The load test is a separate workflow that only runs manually (`workflow_dispatch`). It deploys
-a stage of its own (`load-<run id>`), runs `make load` against it, uploads the Locust report and
-removes the stage again.
+Every push to `main` deploys the stage `prod` (`.github/workflows/main.yml`): `make test`,
+`make deploy`, a read-only `make smoke` (a request without a token must get 401) and
+`make test-e2e`. The E2E tests delete the Cognito users and items they create. `prod` keeps its
+table, user pool and logs on stack deletion (`RETAIN`), has point-in-time recovery, and
+`make destroy` refuses it. `scripts/stage.py` maps `main` to `prod`; no other branch can land
+there.
+
+The load test is a separate workflow that only runs manually (`workflow_dispatch`). With
+`target=own-stage` (the default) it deploys a stage of its own (`load-<run id>`), runs
+`make load` against it, uploads the Locust report and removes the stage again. With
+`target=prod` it runs against `prod`, without deploy or destroy, and never at the same time as
+a prod deploy.
+
+All stages live in one AWS account here. Every stage has a Cognito test client that only allows
+`ADMIN_USER_PASSWORD_AUTH`, which needs IAM rights on the user pool, so it opens nothing to
+callers without them.
 
 Setup, once per account:
 

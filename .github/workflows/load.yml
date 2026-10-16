@@ -1,12 +1,19 @@
 name: load test
 
-# Manual only. Deploys a stage of its own, runs the load test against it and removes it again,
-# so it never runs against a shared stage.
+# Manual only. target=own-stage deploys a stage of its own (load-<run id>), runs the load test
+# against it and removes it again. target=prod runs against prod, without deploy or destroy,
+# and waits for any running prod deploy (same concurrency group as main.yml).
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: "Stage to load"
+        type: choice
+        options: ["own-stage", "prod"]
+        default: own-stage
 
 concurrency:
-  group: load-test
+  group: ${{ inputs.target == 'prod' && 'prod' || 'load-test' }}
   cancel-in-progress: false
 
 permissions:
@@ -18,7 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
-      STAGE: load-${{ github.run_id }}
+      STAGE: ${{ inputs.target == 'prod' && 'prod' || format('load-{0}', github.run_id) }}
+      OWN_STAGE: ${{ inputs.target != 'prod' }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -33,7 +41,8 @@ jobs:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
       - run: uv sync --frozen
-      - run: make deploy
+      - if: env.OWN_STAGE == 'true'
+        run: make deploy
       - run: make load
       - uses: actions/upload-artifact@v4
         if: always()
@@ -41,5 +50,5 @@ jobs:
           name: load-report
           path: reports/
       - name: Destroy the stage
-        if: always() && steps.credentials.outcome == 'success'
+        if: always() && env.OWN_STAGE == 'true' && steps.credentials.outcome == 'success'
         run: make destroy
