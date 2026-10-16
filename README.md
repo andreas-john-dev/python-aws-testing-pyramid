@@ -138,6 +138,14 @@ An account has at most one GitHub OIDC provider. If one exists already, the ci s
 and references it instead of creating a second one (`cdk/src/workshop_cdk/oidc.py`).
 `OIDC_PROVIDER_ARN=...` overrides the lookup.
 
+The role only trusts tokens whose `sub` claim starts with this repository's subject prefix.
+Repositories with immutable OIDC subjects carry the owner and repository ids in it
+(`repo:<owner>@<id>/<repo>@<id>`). `make deploy-ci` reads the prefix with
+`gh api repos/<owner>/<repo>/actions/oidc/customization/sub`; without `gh`, pass
+`GITHUB_SUBJECT_PREFIX=...` yourself, or the role expects `repo:<owner>/<repo>` and
+`configure-aws-credentials` fails with "Not authorized to perform
+sts:AssumeRoleWithWebIdentity".
+
 Then read the role ARN and the region:
 
 ```bash

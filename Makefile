@@ -55,8 +55,13 @@ destroy:
 ## Once per account: GitHub OIDC provider and pipeline role.
 ## make deploy-ci GITHUB_REPOSITORY=owner/repo
 ## An existing provider is found and referenced; OIDC_PROVIDER_ARN=arn:... overrides that.
+## The OIDC subject prefix is read from GitHub with `gh` (immutable subjects carry ids);
+## GITHUB_SUBJECT_PREFIX=... overrides it.
+GITHUB_SUBJECT_PREFIX ?= $(shell gh api repos/$(GITHUB_REPOSITORY)/actions/oidc/customization/sub \
+	--jq '.sub_claim_prefix // empty' 2>/dev/null)
 deploy-ci:
 	cd cdk && $(CDK) deploy --require-approval never -c github_repository=$(GITHUB_REPOSITORY) \
+		$(if $(GITHUB_SUBJECT_PREFIX),-c github_subject_prefix=$(GITHUB_SUBJECT_PREFIX)) \
 		$(if $(OIDC_PROVIDER_ARN),-c oidc_provider_arn=$(OIDC_PROVIDER_ARN))
 
 lint:

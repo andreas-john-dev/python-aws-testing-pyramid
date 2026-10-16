@@ -39,18 +39,30 @@ def test_permissions(account: str, region: str) -> list[iam.PolicyStatement]:
     ]
 
 
+def subject_prefix(github_repository: str, reported_prefix: str | None) -> str:
+    """The start of the `sub` claim in this repository's OIDC tokens.
+
+    By default it is `repo:<owner>/<repo>`. Repositories with immutable subjects add the owner
+    and repository ids (`repo:<owner>@<id>/<repo>@<id>`), so a deleted and re-created repository
+    of the same name cannot assume the role. GitHub reports the prefix in
+    `GET /repos/<owner>/<repo>/actions/oidc/customization/sub` as `sub_claim_prefix`.
+    """
+    return reported_prefix or f"repo:{github_repository}"
+
+
 class CiStack(Stack):
     """GitHub OIDC provider and pipeline role. Once per account, not per stage.
 
     Optional: with an existing pipeline role, skip this stack and add `test_permissions` to it.
     `oidc_provider_arn` references an existing provider; None creates one (see oidc.py).
+    `github_subject_prefix` is the `sub` claim up to the event, see `subject_prefix`.
     """
 
     def __init__(
         self,
         scope: Construct,
         *,
-        github_repository: str,
+        github_subject_prefix: str,
         oidc_provider_arn: str | None = None,
         **kwargs: object,
     ) -> None:
@@ -77,7 +89,7 @@ class CiStack(Stack):
                     },
                     # Only workflows of this repository may assume the role.
                     "StringLike": {
-                        "token.actions.githubusercontent.com:sub": f"repo:{github_repository}:*"
+                        "token.actions.githubusercontent.com:sub": f"{github_subject_prefix}:*"
                     },
                 },
             ),
