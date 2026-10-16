@@ -131,11 +131,33 @@ The load test is a separate workflow that only runs manually (`workflow_dispatch
 Setup, once per account:
 
 ```bash
-make deploy-ci GITHUB_REPOSITORY=owner/repo   # add OIDC_PROVIDER_ARN=... if one exists already
+make deploy-ci GITHUB_REPOSITORY=owner/repo
 ```
 
-Then set the repository variables `AWS_ROLE_ARN` (output of the ci stack, role
-`workshops-pipeline`) and `AWS_REGION`. Without them the AWS job fails with a clear message.
+An account has at most one GitHub OIDC provider. If one exists already, the ci stack finds it
+and references it instead of creating a second one (`cdk/src/workshop_cdk/oidc.py`).
+`OIDC_PROVIDER_ARN=...` overrides the lookup.
+
+The role only trusts tokens whose `sub` claim starts with this repository's subject prefix.
+Repositories with immutable OIDC subjects carry the owner and repository ids in it
+(`repo:<owner>@<id>/<repo>@<id>`). `make deploy-ci` reads the prefix with
+`gh api repos/<owner>/<repo>/actions/oidc/customization/sub`; without `gh`, pass
+`GITHUB_SUBJECT_PREFIX=...` yourself, or the role expects `repo:<owner>/<repo>` and
+`configure-aws-credentials` fails with "Not authorized to perform
+sts:AssumeRoleWithWebIdentity".
+
+Then read the role ARN and the region:
+
+```bash
+aws cloudformation describe-stacks --stack-name workshops-ci \
+  --query "Stacks[0].Outputs[?OutputKey=='PipelineRoleArn'].OutputValue" --output text
+aws configure get region   # or echo $AWS_REGION, the region you deployed to
+```
+
+and set both as repository **variables** (not secrets) under
+*Settings → Secrets and variables → Actions → Variables*: `AWS_ROLE_ARN` and `AWS_REGION`.
+The workflows read them as `vars.AWS_ROLE_ARN` and `vars.AWS_REGION`. Without them the AWS job
+fails with a clear message.
 
 ## The bug catalogue
 

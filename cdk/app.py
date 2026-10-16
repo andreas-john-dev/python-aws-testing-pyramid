@@ -1,10 +1,14 @@
 """CDK app. `cdk deploy --all -c stage=<stage>` deploys shared, stateful and stateless.
 
-The ci stack is only part of the app with `-c github_repository=<owner/repo>`.
+The ci stack is only part of the app with `-c github_repository=<owner/repo>`, optionally with
+`-c github_subject_prefix=<prefix>` (see `workshop_cdk.ci.subject_prefix`).
 """
 
+import sys
+
 import aws_cdk as cdk
-from workshop_cdk.ci import CiStack
+from workshop_cdk.ci import CI_STACK_NAME, CiStack, subject_prefix
+from workshop_cdk.oidc import discover_provider
 from workshop_cdk.shared import SharedStack
 from workshop_cdk.stage import Stage
 from workshop_cdk.stateful import StatefulStack
@@ -18,10 +22,19 @@ env = cdk.Environment(
 
 github_repository = app.node.try_get_context("github_repository")
 if github_repository:
+    reported_prefix = app.node.try_get_context("github_subject_prefix")
+    if not reported_prefix:
+        print(
+            f"No github_subject_prefix given, assuming repo:{github_repository}. Repositories "
+            "with immutable OIDC subjects need the prefix GitHub reports.",
+            file=sys.stderr,
+        )
     CiStack(
         app,
-        github_repository=github_repository,
-        oidc_provider_arn=app.node.try_get_context("oidc_provider_arn"),
+        github_subject_prefix=subject_prefix(github_repository, reported_prefix),
+        oidc_provider_arn=discover_provider(
+            CI_STACK_NAME, app.node.try_get_context("oidc_provider_arn")
+        ),
         env=env,
     )
 else:

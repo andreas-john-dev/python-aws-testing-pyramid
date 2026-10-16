@@ -54,7 +54,8 @@ jobs:
           node-version: 22
       - name: Stage name from branch
         run: echo "STAGE=$(python3 scripts/stage.py "$BRANCH")" >> "$GITHUB_ENV"
-      - uses: aws-actions/configure-aws-credentials@v4
+      - id: credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
@@ -62,6 +63,7 @@ jobs:
       - run: make deploy
       - run: make test-aws
       - run: make test-e2e
-      - name: Destroy the stage, also after failed tests
-        if: always()
+      # Also after failed tests, but only once there is something to destroy.
+      - name: Destroy the stage
+        if: always() && steps.credentials.outcome == 'success'
         run: make destroy
