@@ -1,4 +1,4 @@
-"""Derives the stage name from a branch name: one short-lived stage per branch.
+"""Derives the stage name from a branch name: one short-lived stage per branch, prod for main.
 
 Lowercase, only a-z, 0-9 and '-', at most 20 characters. A shortened name gets a hash suffix so
 that two long branches with the same prefix do not end up on the same stage.
@@ -14,10 +14,17 @@ import sys
 
 MAX_LENGTH = 20
 HASH_LENGTH = 6
+PRODUCTION_BRANCH = "main"
+PRODUCTION_STAGE = "prod"
 
 
 def stage_from_branch(branch: str) -> str:
+    if branch == PRODUCTION_BRANCH:
+        return PRODUCTION_STAGE
     name = re.sub(r"[^a-z0-9]+", "-", branch.lower()).strip("-") or "stage"
+    # Only main deploys to prod. A branch that happens to be called "prod" gets a hash suffix.
+    if name == PRODUCTION_STAGE:
+        name = f"{name}-{hashlib.sha256(branch.encode()).hexdigest()[:HASH_LENGTH]}"
     if len(name) <= MAX_LENGTH:
         return name
     digest = hashlib.sha256(branch.encode()).hexdigest()[:HASH_LENGTH]
