@@ -1,12 +1,13 @@
 name: load test
 
-# Manual only, against a stage of your own, never a shared one.
+# Manual only. Deploys a stage of its own, runs the load test against it and removes it again,
+# so it never runs against a shared stage.
 on:
   workflow_dispatch:
-    inputs:
-      stage:
-        description: "Deployed stage to run against"
-        required: true
+
+concurrency:
+  group: load-test
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -17,20 +18,28 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
-      STAGE: ${{ inputs.stage }}
+      STAGE: load-${{ github.run_id }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
           version: "0.11.32"
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
       - run: uv sync --frozen
+      - run: make deploy
       - run: make load
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: load-report
           path: reports/
+      - name: Destroy the stage
+        if: always() && steps.credentials.outcome == 'success'
+        run: make destroy

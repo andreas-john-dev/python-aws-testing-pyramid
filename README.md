@@ -126,7 +126,9 @@ start lower.
 
 A concurrency group per branch keeps two pushes from deploying to the same stage in parallel.
 `cancel-in-progress` stays off: a cancelled run would skip step 5 and leave half a stage behind.
-The load test is a separate workflow that only runs manually (`workflow_dispatch`).
+The load test is a separate workflow that only runs manually (`workflow_dispatch`). It deploys
+a stage of its own (`load-<run id>`), runs `make load` against it, uploads the Locust report and
+removes the stage again.
 
 Setup, once per account:
 
